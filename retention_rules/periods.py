@@ -44,24 +44,24 @@ class Period(ABC):
 class SubdividedPeriod(Period):
     def __init__(self, sub_period: Period, subdivisions: int):
         self._sub_period = sub_period
-        self._subdivisions = subdivisions
+        self._sub_div = subdivisions
 
     def to_period(self, time_stamp: DateTime) -> int:
         internal_period = self._sub_period.to_period(time_stamp)
         start_time = self._sub_period.period_start(internal_period)
         next_time = self._sub_period.period_start(internal_period + 1)
         fraction = (time_stamp - start_time) / (next_time - start_time)
-        return internal_period * self._subdivisions + int(fraction * self._subdivisions)
+        return internal_period * self._sub_div + int(fraction * self._sub_div)
 
     def period_start(self, period: int) -> DateTime:
         # Get the underlying period and its start
-        p = period // self._subdivisions
+        p = period // self._sub_div
         internal_start = self._sub_period.period_start(p)
         internal_next = self._sub_period.period_start(p + 1)
-        return internal_start + (internal_next - internal_start) * (period % self._subdivisions) / self._subdivisions
+        return internal_start + (internal_next - internal_start) * (period % self._sub_div) / self._sub_div
 
     def max_duration(self) -> TimeDelta:
-        return self._sub_period.max_duration() / self._subdivisions
+        return self._sub_period.max_duration() / self._sub_div
 
 
 class Year(Period):
