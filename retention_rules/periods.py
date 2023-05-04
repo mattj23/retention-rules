@@ -32,6 +32,10 @@ class Period(ABC):
         """Converts a time_stamp into an integer representing the period of time it is in"""
         raise NotImplementedError()
 
+    def period_start(self, period: int) -> DateTime:
+        """Returns the start time of the period"""
+        raise NotImplementedError()
+
     def max_duration(self) -> TimeDelta:
         """Returns the maximum duration of the period"""
         raise NotImplementedError()
@@ -44,6 +48,9 @@ class Year(Period):
     def max_duration(self) -> TimeDelta:
         return TimeDelta(days=366)
 
+    def period_start(self, period: int) -> DateTime:
+        return DateTime(_reference_date.year + period, 1, 1)
+
 
 class Month(Period):
     def to_period(self, time_stamp: DateTime) -> int:
@@ -51,6 +58,14 @@ class Month(Period):
 
     def max_duration(self) -> TimeDelta:
         return TimeDelta(days=31)
+
+    def period_start(self, period: int) -> DateTime:
+        year = _reference_date.year + (period // 12)
+        month = period % 12
+        if month == 0:
+            month = 12
+            year -= 1
+        return DateTime(year, month, 1)
 
 
 class Week(Period):
@@ -62,6 +77,9 @@ class Week(Period):
     def max_duration(self) -> TimeDelta:
         return TimeDelta(days=7)
 
+    def period_start(self, period: int) -> DateTime:
+        return _reference_date + TimeDelta(days=(period * 7) + _reference_date.isocalendar().weekday)
+
 
 class Day(Period):
     def to_period(self, time_stamp: DateTime) -> int:
@@ -69,6 +87,9 @@ class Day(Period):
 
     def max_duration(self) -> TimeDelta:
         return TimeDelta(hours=24)
+
+    def period_start(self, period: int) -> DateTime:
+        return _reference_date + TimeDelta(days=period)
 
 
 class Hour(Period):
@@ -78,6 +99,9 @@ class Hour(Period):
     def max_duration(self) -> TimeDelta:
         return TimeDelta(minutes=60)
 
+    def period_start(self, period: int) -> DateTime:
+        return _reference_date + TimeDelta(hours=period)
+
 
 class Minute(Period):
     def to_period(self, time_stamp: DateTime) -> int:
@@ -85,3 +109,6 @@ class Minute(Period):
 
     def max_duration(self) -> TimeDelta:
         return TimeDelta(seconds=60)
+
+    def period_start(self, period: int) -> DateTime:
+        return _reference_date + TimeDelta(minutes=period)

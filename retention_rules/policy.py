@@ -7,6 +7,7 @@ from typing import List, Optional, Any, Callable
 @dataclass
 class PolicyRule:
     applies_for: Period
+    applies_period_count: int
     retain_every: Period
 
 

@@ -70,6 +70,13 @@ def test_hour_advancement():
         assert t, m
 
 
+def test_minute_advancement():
+    """ Tests that the minute period advances correctly. """
+    tester = AdvancementTester(Minute(), TimeDelta(seconds=30), TimeDelta(minutes=1))
+    for t, m in tester.test_between(DateTime(2024, 1, 1), DateTime(2024, 12, 31, 23, 59, 59)):
+        assert t, m
+
+
 class AdvancementTester:
     def __init__(self, period: Period, advance_by: TimeDelta, verify_increment: TimeDelta):
         self.period = period
