@@ -1,5 +1,5 @@
 from datetime import datetime as DateTime, timedelta as TimeDelta
-from retention_rules.periods import Year, Month, Week, Day, Hour, Minute, Period
+from retention_rules.periods import Year, Month, Week, Day, Hour, Minute, Period, SubdividedPeriod
 
 
 def test_year_start_times():
@@ -69,3 +69,15 @@ def test_minute_start_times():
         start = minute.period_start(i)
         assert i == minute.to_period(start), f"Minute {i} ({start}) failed round trip"
         assert i - 1 == minute.to_period(start - TimeDelta(seconds=1)), f"Minute {i} ({start}) failed to decrement"
+
+
+def test_subdivided_hour_start_times():
+    period = SubdividedPeriod(Hour(), 4)
+    offset = period.to_period(DateTime(2015, 1, 1))
+
+    for j in range(24 * 4 * 365 * 2):
+        i = j + offset
+        start = period.period_start(i)
+        assert start.minute in [0, 15, 30, 45], f"Minute {start.minute} is not a quarter hour"
+        assert i == period.to_period(start), f"Quarter hour {i} ({start}) failed round trip"
+        assert i - 1 == period.to_period(start - TimeDelta(seconds=1)), f"Quarter hour {i} ({start}) failed to decrement"

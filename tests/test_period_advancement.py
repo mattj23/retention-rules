@@ -16,7 +16,7 @@
 """
 
 from datetime import datetime as DateTime, timedelta as TimeDelta
-from retention_rules.periods import Year, Month, Week, Day, Hour, Minute, Period
+from retention_rules.periods import Year, Month, Week, Day, Hour, Minute, Period, SubdividedPeriod
 
 
 def test_month_advancement():
@@ -74,6 +74,13 @@ def test_minute_advancement():
     """ Tests that the minute period advances correctly. """
     tester = AdvancementTester(Minute(), TimeDelta(seconds=30), TimeDelta(minutes=1))
     for t, m in tester.test_between(DateTime(2024, 1, 1), DateTime(2024, 12, 31, 23, 59, 59)):
+        assert t, m
+
+
+def test_subdivided_hours():
+    period = SubdividedPeriod(Hour(), 4)
+    tester = AdvancementTester(period, TimeDelta(minutes=3), TimeDelta(minutes=15))
+    for t, m in tester.test_between(DateTime(2024, 1, 1), DateTime(2025, 1, 1)):
         assert t, m
 
 

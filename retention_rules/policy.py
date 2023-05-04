@@ -26,8 +26,8 @@ class RetentionPolicy:
     def _update(self):
         self._layers.sort(key=lambda l: l.applies_for.max_duration())
 
-    def add_rule(self, applies_for: Period, retain_every: Period):
-        self._layers.append(PolicyRule(applies_for, retain_every))
+    def add_rule(self, applies_for: Period, applies_period_count: int, retain_every: Period):
+        self._layers.append(PolicyRule(applies_for, applies_period_count, retain_every))
         self._update()
 
     def check_retention(self, items: List[Any],

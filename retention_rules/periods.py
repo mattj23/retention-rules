@@ -41,6 +41,29 @@ class Period(ABC):
         raise NotImplementedError()
 
 
+class SubdividedPeriod(Period):
+    def __init__(self, sub_period: Period, subdivisions: int):
+        self._sub_period = sub_period
+        self._subdivisions = subdivisions
+
+    def to_period(self, time_stamp: DateTime) -> int:
+        internal_period = self._sub_period.to_period(time_stamp)
+        start_time = self._sub_period.period_start(internal_period)
+        next_time = self._sub_period.period_start(internal_period + 1)
+        fraction = (time_stamp - start_time) / (next_time - start_time)
+        return internal_period * self._subdivisions + int(fraction * self._subdivisions)
+
+    def period_start(self, period: int) -> DateTime:
+        # Get the underlying period and its start
+        p = period // self._subdivisions
+        internal_start = self._sub_period.period_start(p)
+        internal_next = self._sub_period.period_start(p + 1)
+        return internal_start + (internal_next - internal_start) * (period % self._subdivisions) / self._subdivisions
+
+    def max_duration(self) -> TimeDelta:
+        return self._sub_period.max_duration() / self._subdivisions
+
+
 class Year(Period):
     def to_period(self, time_stamp: DateTime) -> int:
         return _year(time_stamp)

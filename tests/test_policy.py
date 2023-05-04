@@ -5,8 +5,8 @@ from retention_rules.policy import RetentionPolicy
 
 def test_simple_policy():
     policy = RetentionPolicy()
-    policy.add_rule(Day(), Hour())
-    policy.add_rule(Week(), Day())
+    policy.add_rule(Day(), 1, Hour())
+    policy.add_rule(Week(), 1, Day())
 
     raw_data = [
         ('2020-01-01 00:00:00', True),
