@@ -47,7 +47,8 @@ class RetentionPolicy:
             now_period = layer.applies_for.to_period(now)
 
             # Find the items which are in the same applies-to period as the current time
-            period_items = [item for item in results if layer.applies_for.to_period(item.time) == now_period]
+            period_items = [item for item in results if
+                            layer.applies_for.to_period(item.time) >= now_period - layer.applies_period_count + 1]
 
             # Now we will group the items by the retain-every period
             groups = {}

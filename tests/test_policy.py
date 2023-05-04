@@ -38,6 +38,12 @@ def test_simple_policy():
 
 
 def test_simple_applies_for_count():
+    """ This is a slightly more complicated test. The current time is 3:20, and the applies-to period is an
+    hour with a count of 2.  The retain-every period is 15 minutes.
+
+    Because it's 3:20 the current hour is 3 and the previous hour is 2, so only timestamps from those hours will
+    be considered.  Then, only timestamps that come immediately on or after :00, :15, :30, and :45 will be retained.
+    """
     policy = RetentionPolicy()
     policy.add_rule(Hour(), 2, SubdividedPeriod(Hour(), 4))
 
@@ -56,7 +62,7 @@ def test_simple_applies_for_count():
         ('2020-01-01 01:50:00', False),
         ('2020-01-01 02:00:00', True),
         ('2020-01-01 02:10:00', False),
-        ('2020-01-01 02:20:00', False),
+        ('2020-01-01 02:20:00', True),
         ('2020-01-01 02:30:00', True),
         ('2020-01-01 02:40:00', False),
         ('2020-01-01 02:50:00', True),
@@ -67,4 +73,4 @@ def test_simple_applies_for_count():
     data = [(DateTime.strptime(t, "%Y-%m-%d %H:%M:%S"), v) for t, v in raw_data]
     mask = policy.check_retention(data, key=lambda x: x[0], now=DateTime(2020, 1, 1, 3, 20, 0))
     for i, (t, v) in enumerate(data):
-        assert mask[i] == v, f"Mask at index {i} should be {v} but was {mask[i]}"
+        assert mask[i] == v, f"Mask at index {i} ({raw_data[i][0]}) should be {v} but was {mask[i]}"
