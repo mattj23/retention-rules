@@ -1,5 +1,5 @@
 from datetime import datetime as DateTime
-from retention_rules.periods import Minute, Hour, Day, Week, Month, Year
+from retention_rules.periods import Minute, Hour, Day, Week, Month, Year, SubdividedPeriod
 from retention_rules.policy import RetentionPolicy
 
 
@@ -33,5 +33,38 @@ def test_simple_policy():
 
     data = [(DateTime.strptime(t, "%Y-%m-%d %H:%M:%S"), v) for t, v in raw_data]
     mask = policy.check_retention(data, key=lambda x: x[0], now=DateTime(2020, 1, 1, 10, 0, 0))
+    for i, (t, v) in enumerate(data):
+        assert mask[i] == v, f"Mask at index {i} should be {v} but was {mask[i]}"
+
+
+def test_simple_applies_for_count():
+    policy = RetentionPolicy()
+    policy.add_rule(Hour(), 2, SubdividedPeriod(Hour(), 4))
+
+    raw_data = [
+        ('2020-01-01 00:00:00', False),
+        ('2020-01-01 00:10:00', False),
+        ('2020-01-01 00:20:00', False),
+        ('2020-01-01 00:30:00', False),
+        ('2020-01-01 00:40:00', False),
+        ('2020-01-01 00:50:00', False),
+        ('2020-01-01 01:00:00', False),
+        ('2020-01-01 01:10:00', False),
+        ('2020-01-01 01:20:00', False),
+        ('2020-01-01 01:30:00', False),
+        ('2020-01-01 01:40:00', False),
+        ('2020-01-01 01:50:00', False),
+        ('2020-01-01 02:00:00', True),
+        ('2020-01-01 02:10:00', False),
+        ('2020-01-01 02:20:00', False),
+        ('2020-01-01 02:30:00', True),
+        ('2020-01-01 02:40:00', False),
+        ('2020-01-01 02:50:00', True),
+        ('2020-01-01 03:00:00', True),
+        ('2020-01-01 03:10:00', False),
+    ]
+
+    data = [(DateTime.strptime(t, "%Y-%m-%d %H:%M:%S"), v) for t, v in raw_data]
+    mask = policy.check_retention(data, key=lambda x: x[0], now=DateTime(2020, 1, 1, 3, 20, 0))
     for i, (t, v) in enumerate(data):
         assert mask[i] == v, f"Mask at index {i} should be {v} but was {mask[i]}"
