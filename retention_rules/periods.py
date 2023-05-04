@@ -14,7 +14,7 @@
 """
 
 from abc import ABC, abstractmethod
-from datetime import datetime as DateTime
+from datetime import datetime as DateTime, timedelta as TimeDelta
 
 _reference_date = DateTime(1970, 1, 1)
 
@@ -32,15 +32,25 @@ class Period(ABC):
         """Converts a time_stamp into an integer representing the period of time it is in"""
         raise NotImplementedError()
 
+    def max_duration(self) -> TimeDelta:
+        """Returns the maximum duration of the period"""
+        raise NotImplementedError()
+
 
 class Year(Period):
     def to_period(self, time_stamp: DateTime) -> int:
         return _year(time_stamp)
 
+    def max_duration(self) -> TimeDelta:
+        return TimeDelta(days=366)
+
 
 class Month(Period):
     def to_period(self, time_stamp: DateTime) -> int:
         return _year(time_stamp) * 12 + time_stamp.month
+
+    def max_duration(self) -> TimeDelta:
+        return TimeDelta(days=31)
 
 
 class Week(Period):
@@ -49,17 +59,29 @@ class Week(Period):
         days = _day(time_stamp) - _reference_date.isocalendar().weekday
         return days // 7
 
+    def max_duration(self) -> TimeDelta:
+        return TimeDelta(days=7)
+
 
 class Day(Period):
     def to_period(self, time_stamp: DateTime) -> int:
         return _day(time_stamp)
+
+    def max_duration(self) -> TimeDelta:
+        return TimeDelta(hours=24)
 
 
 class Hour(Period):
     def to_period(self, time_stamp: DateTime) -> int:
         return _day(time_stamp) * 24 + time_stamp.hour
 
+    def max_duration(self) -> TimeDelta:
+        return TimeDelta(minutes=60)
+
 
 class Minute(Period):
     def to_period(self, time_stamp: DateTime) -> int:
         return (_day(time_stamp) * 24 + time_stamp.hour) * 60 + time_stamp.minute
+
+    def max_duration(self) -> TimeDelta:
+        return TimeDelta(seconds=60)
