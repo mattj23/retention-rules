@@ -70,3 +70,16 @@ def test_week_rollover():
         clock += TimeDelta(days=1)
 
 
+def test_day_advancement():
+    """ Tests that the day period advances correctly. """
+    tester = AdvancementTester(Day(), TimeDelta(hours=1), TimeDelta(hours=24))
+    for t, m in tester.test_between(DateTime(2020, 1, 1), DateTime(2040, 1, 1)):
+        assert t, m
+
+
+def test_hour_advancement():
+    """ Tests that the hour period advances correctly. """
+    tester = AdvancementTester(Hour(), TimeDelta(minutes=6), TimeDelta(hours=1))
+    for t, m in tester.test_between(DateTime(2020, 1, 1), DateTime(2026, 1, 1)):
+        assert t, m
+
