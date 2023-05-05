@@ -48,7 +48,7 @@ def test_week_rollover():
     last_period = week.to_period(clock)
     while clock < DateTime(2035, 1, 1):
         period = week.to_period(clock)
-        if clock.isocalendar().weekday == 1:
+        if clock.isocalendar()[2] == 1:
             assert period - last_period == 1, f"Week should have advanced by one from {last_clock} -> {clock}"
 
         last_clock = clock

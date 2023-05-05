@@ -94,14 +94,14 @@ class Month(Period):
 class Week(Period):
     def to_period(self, time_stamp: DateTime) -> int:
         # This is easier than dealing with the years that have 53 weeks
-        days = _day(time_stamp) - _reference_date.isocalendar().weekday
+        days = _day(time_stamp) - _reference_date.isocalendar()[2]
         return days // 7
 
     def max_duration(self) -> TimeDelta:
         return TimeDelta(days=7)
 
     def period_start(self, period: int) -> DateTime:
-        return _reference_date + TimeDelta(days=(period * 7) + _reference_date.isocalendar().weekday)
+        return _reference_date + TimeDelta(days=(period * 7) + _reference_date.isocalendar()[2])
 
 
 class Day(Period):
