@@ -97,6 +97,44 @@ def test_simple_strategy_newest():
         assert condition, message
 
 
+def test_simple_strategy_reuse_off():
+    policy = RetentionPolicy(reuse_in_group=False, retain_strategy=RetainStrategy.OLDEST)
+    policy.add_rule(Week(), 1, Day())
+    policy.add_rule(Month(), 1, SubdividedPeriod(Week(), 2))
+
+    # Using the oldest strategy, the first timestamp for each day will be retained.  However, the second rule
+    # breaks the week in half at 12:00 on the 4th, so the oldest timestamp for the second half of the week will be
+    # the one at 17:00 on the 4th.  With reuse off, the second rule will choose to also retain the 17:00 timestamp
+    # on the 5th
+    raw_data = [
+        ('2023-05-04 01:00:00', True),
+        ('2023-05-04 17:00:00', True),
+        ('2023-05-05 01:00:00', True),
+        ('2023-05-05 17:00:00', False),
+    ]
+    for condition, message in _test_loop(raw_data, policy, DateTime(2023, 5, 5, 18, 0, 0)):
+        assert condition, message
+
+
+def test_simple_strategy_reuse_on():
+    policy = RetentionPolicy(reuse_in_group=True, retain_strategy=RetainStrategy.OLDEST)
+    policy.add_rule(Week(), 1, Day())
+    policy.add_rule(Month(), 1, SubdividedPeriod(Week(), 2))
+
+    # Using the oldest strategy, the first timestamp for each day will be retained.  However, the second rule
+    # breaks the week in half at 12:00 on the 4th, so the oldest timestamp for the second half of the week will be
+    # the one at 17:00 on the 4th.  With retain on, the second rule will accept the 01:00 timestamp on the 5th and
+    # not additionally mark the 17:00 timestamp on the 4th.
+    raw_data = [
+        ('2023-05-04 01:00:00', True),
+        ('2023-05-04 17:00:00', False),
+        ('2023-05-05 01:00:00', True),
+        ('2023-05-05 17:00:00', False),
+    ]
+    for condition, message in _test_loop(raw_data, policy, DateTime(2023, 5, 5, 18, 0, 0)):
+        assert condition, message
+
+
 def _test_loop(raw_data, policy, now):
     data = [(DateTime.strptime(t, "%Y-%m-%d %H:%M:%S"), v) for t, v in raw_data]
     result = policy.check_retention(data, key=lambda x: x[0], now=now)

@@ -69,7 +69,7 @@ This library uses the following fundamental periods:
 |-------|--------|--------------------------------------------------------------------------------------------------------|
 | `Y`   | Year   | All times in which the year number is the same (for example, 2022, or 2023)                            |
 | `M`   | Month  | All times in which the year and month are the same (for example, 2022-01)                              |
-| `W`   | Week   | A week starts on a Sunday and ends on a Saturday                                                       |
+| `W`   | Week   | A week starts on a Monday 00:00:00 and ends on a Sunday 23:59:59.9999...                               |
 | `D`   | Day    | All times in which the year, month, and day are the same (for example, 2022-01-01)                     |
 | `H`   | Hour   | All times in which the year, month, day, and hour are the same (for example, 2022-01-01 00)            |
 | `MIN` | Minute | All times in which the year, month, day, hour, and minute are the same (for example, 2022-01-01 00:00) |
