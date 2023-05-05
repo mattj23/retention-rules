@@ -13,7 +13,7 @@
 
 """
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from datetime import datetime as DateTime, timedelta as TimeDelta
 
 _reference_date = DateTime(1970, 1, 1)

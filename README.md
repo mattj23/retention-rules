@@ -191,13 +191,13 @@ class MyBackupFile:
     timestamp: datetime
     
 my_objects: MyBackupFile = [ ... ]
-results = policy.check_retention(my_objects, lambda x: x.timestamp)
+results = policy.check_retention(my_objects, key=lambda x: x.timestamp)
 ```
 
 Additionally, the `check_retention(...)` method can be passed a `datetime` object to use as the current time.  This is useful for testing, or for evaluating a policy for a time in the past or future.
 
 ```python
-results = policy.check_retention(my_objects, lambda x: x.timestamp, datetime(2022, 1, 10, 1, 0))
+results = policy.check_retention(my_objects, key=lambda x: x.timestamp, now=datetime(2022, 1, 10, 1, 0))
 ```
 
 ### Evaluating the Results
@@ -232,6 +232,26 @@ Ultimately, a period must perform the following three functions:
 3. It must be able to specify a duration (`datetime.timedelta`) which represents a safe *maximum* length for the period. For instance, no year is longer than 366 days, so the `Year` period specifies a duration of 366 days.  No month is longer than 31 days, so the `Month` period specifies a duration of 31 days.  The more accurate these durations are the better, but they are primarily used for sorting and testing.
 
 Implementing a new period consists of implementing these three features, nothing else is currently required.
+
+The current implementation of the `Period` class is as follows:
+
+```python
+from abc import ABC
+from datetime import datetime as DateTime, timedelta as TimeDelta
+
+class Period(ABC):
+   def to_period(self, time_stamp: DateTime) -> int:
+      """Converts a time_stamp into an integer representing the period of time it is in"""
+      raise NotImplementedError()
+
+   def period_start(self, period: int) -> DateTime:
+      """Returns the start time of the period"""
+      raise NotImplementedError()
+
+   def max_duration(self) -> TimeDelta:
+      """Returns the maximum duration of the period"""
+      raise NotImplementedError()
+```
 
 ### The Policy Builder
 

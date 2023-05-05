@@ -3,7 +3,7 @@ requires = ["setuptools>=67.7.2", "wheel"]
 
 [project]
 name = "retention-rules"
-version = "0.1.0"
+version = "0.1.1"
 authors = [
     {name = "Matt Jarvis"},
 ]
