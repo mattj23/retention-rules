@@ -63,6 +63,9 @@ class SubdividedPeriod(Period):
     def max_duration(self) -> TimeDelta:
         return self._sub_period.max_duration() / self._sub_div
 
+    def __repr__(self):
+        return f"{self._sub_period}/{self._sub_div}"
+
 
 class Year(Period):
     def to_period(self, time_stamp: DateTime) -> int:
@@ -73,6 +76,9 @@ class Year(Period):
 
     def period_start(self, period: int) -> DateTime:
         return DateTime(_reference_date.year + period, 1, 1)
+
+    def __repr__(self):
+        return "Year"
 
 
 class Month(Period):
@@ -90,6 +96,9 @@ class Month(Period):
             year -= 1
         return DateTime(year, month, 1)
 
+    def __repr__(self):
+        return "Month"
+
 
 class Week(Period):
     def to_period(self, time_stamp: DateTime) -> int:
@@ -103,6 +112,9 @@ class Week(Period):
     def period_start(self, period: int) -> DateTime:
         return _reference_date + TimeDelta(days=(period * 7) + _reference_date.isocalendar()[2])
 
+    def __repr__(self):
+        return "Week"
+
 
 class Day(Period):
     def to_period(self, time_stamp: DateTime) -> int:
@@ -113,6 +125,9 @@ class Day(Period):
 
     def period_start(self, period: int) -> DateTime:
         return _reference_date + TimeDelta(days=period)
+
+    def __repr__(self):
+        return "Day"
 
 
 class Hour(Period):
@@ -125,6 +140,9 @@ class Hour(Period):
     def period_start(self, period: int) -> DateTime:
         return _reference_date + TimeDelta(hours=period)
 
+    def __repr__(self):
+        return "Hour"
+
 
 class Minute(Period):
     def to_period(self, time_stamp: DateTime) -> int:
@@ -135,3 +153,6 @@ class Minute(Period):
 
     def period_start(self, period: int) -> DateTime:
         return _reference_date + TimeDelta(minutes=period)
+
+    def __repr__(self):
+        return "Minute"

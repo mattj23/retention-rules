@@ -15,6 +15,7 @@ class PolicyRule:
     applies_for: Period
     applies_period_count: int
     retain_every: Period
+    note: Optional[str] = None
 
 
 @dataclass
@@ -47,16 +48,18 @@ class RetentionPolicy:
             the retain_strategy to determine which gets kept, which may or may not end up being the same as the item
             already marked to keep.
         """
-        self._rules: List[PolicyRule] = kwargs.get("rules", [])
-        self._retain_strategy: RetainStrategy = kwargs.get("retain_strategy", RetainStrategy.OLDEST)
-        self._reuse_in_group: bool = kwargs.get("reuse_in_group", False)
+        self.rules: List[PolicyRule] = kwargs.get("rules", [])
+        self.retain_strategy: RetainStrategy = kwargs.get("retain_strategy", RetainStrategy.OLDEST)
+        self.reuse_in_group: bool = kwargs.get("reuse_in_group", False)
         self._update()
 
     def _update(self):
-        self._rules.sort(key=lambda l: l.applies_for.max_duration() * l.applies_period_count)
+        self.rules.sort(key=lambda l: l.applies_for.max_duration() * l.applies_period_count)
 
-    def add_rule(self, applies_for: Period, applies_period_count: int, retain_every: Period):
-        self._rules.append(PolicyRule(applies_for, applies_period_count, retain_every))
+    def add_rule(self, applies_for: Period, applies_period_count: int, retain_every: Period,
+                 note: Optional[str] = None):
+        """ Adds a rule to the policy. """
+        self.rules.append(PolicyRule(applies_for, applies_period_count, retain_every, note))
         self._update()
 
     def check_retention(self, items: List[Any],
@@ -68,7 +71,7 @@ class RetentionPolicy:
 
         # We will iterate through each layer and mutate the results as we go. Layers will be able to mark a result as
         # to be retained, but will not un-mark something which has already been marked.
-        for rule in self._rules:
+        for rule in self.rules:
             # Get the integer of the current rule's applies-to period, then calculate the smallest period integer which
             # the current rule will apply to.
             this_period = rule.applies_for.to_period(now)
@@ -82,22 +85,24 @@ class RetentionPolicy:
 
             # Now we will iterate through the groups and determine which item should be retained
             for item_group in grouped:
-                if self._reuse_in_group and any(x.retain for x in item_group):
+                if self.reuse_in_group and any(x.retain for x in item_group):
                     # If we are re-using items in a group, we will first check if any of the items are already marked
                     # to be retained. If so, we can safely skip doing anything to this group
                     continue
 
-                if self._retain_strategy == RetainStrategy.OLDEST:
+                if self.retain_strategy == RetainStrategy.OLDEST:
                     # If we are retaining the oldest (first) item, we will mark the minimum time-stamp item
                     to_retain = min(item_group, key=lambda x: x.time)
-                    to_retain.retain = True
-                    to_retain.rule = rule
+                    if not to_retain.retain:
+                        to_retain.retain = True
+                        to_retain.rule = rule
 
-                elif self._retain_strategy == RetainStrategy.NEWEST:
+                elif self.retain_strategy == RetainStrategy.NEWEST:
                     # If we are retaining the newest (last) item, we will mark the maximum time-stamp item
                     to_retain = max(item_group, key=lambda x: x.time)
-                    to_retain.retain = True
-                    to_retain.rule = rule
+                    if not to_retain.retain:
+                        to_retain.retain = True
+                        to_retain.rule = rule
 
         # Finally, we will return the results
         return results

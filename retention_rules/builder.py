@@ -19,29 +19,60 @@
 """
 
 import re
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Callable
 
-from .policy import RetentionPolicy
+from .policy import RetentionPolicy, RetainStrategy
 from .periods import *
 
 
-def build_policy(policy_dict: Dict) -> RetentionPolicy:
-    policy = RetentionPolicy()
-    rule_items = policy_dict.get("rules", [])
-    if not rule_items:
-        raise ValueError("Policy must contain at least one rule in the 'rules' key")
+class PolicyBuilder:
+    def __init__(self, **kwargs):
+        self.keys: Dict[str, Callable[[], Period]] = kwargs.get("keys", _by_key)
 
-    for rule in rule_items:
-        applies, count = parse_period_text(rule["applies_for"])
-        retain_every, rcount = parse_period_text(rule["retain_every"])
-        if rcount != 1:
-            raise ValueError(f"Retain-every does not currently support a count")
+    def build(self, policy_dict: Dict) -> RetentionPolicy:
+        retain = RetainStrategy(policy_dict.get("retain", "oldest"))
+        reuse = policy_dict.get("reuse", False)
+        policy = RetentionPolicy(retain_strategy=retain, reuse_in_group=reuse)
 
-        policy.add_rule(applies, count, retain_every)
-    return policy
+        rule_items = policy_dict.get("rules", [])
+        if not rule_items:
+            raise ValueError("Policy must contain at least one rule in the 'rules' key")
+
+        for rule in rule_items:
+            applies_text = rule["applies_for"]
+            retain_text = rule["retain_every"]
+
+            applies, count = self._parse_key_text(applies_text)
+            retain_every, rcount = self._parse_key_text(retain_text)
+            if rcount != 1:
+                raise ValueError(f"Retain-every does not currently support a count")
+
+            note = rule.get("note", None) or f"{applies_text} retain {retain_text}"
+            policy.add_rule(applies, count, retain_every, note)
+
+        return policy
+
+    def _parse_key_text(self, text: str):
+        match = _key_pattern.match(text)
+        if not match:
+            raise ValueError(f"Invalid specifier: {text}")
+
+        count = int(match.group(1) or 1)
+        unit_key = match.group(2)
+        sub_div = match.group(3)
+
+        period_cls = self.keys.get(unit_key, None)
+        if not period_cls:
+            raise ValueError(f"PolicyBuilder could not find a period associated with the key: {unit_key}")
+
+        period = period_cls()
+        if sub_div:
+            period = SubdividedPeriod(period, int(sub_div[1:]))
+
+        return period, count
 
 
-_key_pattern = re.compile(r"^(\d+)?(Y|M|W|D|H|MIN|S)(/\d+)?$")
+_key_pattern = re.compile(r"^(\d+)?(\w+)(/\d+)?$")
 
 _by_key = {
     "Y": Year,
@@ -51,22 +82,3 @@ _by_key = {
     "H": Hour,
     "MIN": Minute,
 }
-
-
-def parse_period_text(text: str) -> Tuple[Period, int]:
-    match = _key_pattern.match(text)
-    if not match:
-        raise ValueError(f"Invalid period: {text}")
-
-    count = int(match.group(1) or 1)
-    unit = match.group(2)
-    sub_div = match.group(3)
-
-    period_cls = _by_key.get(unit, None)
-    if not period_cls:
-        raise ValueError(f"Could not find period for unit: {unit}")
-
-    period = period_cls()
-    if sub_div:
-        period = SubdividedPeriod(period, int(sub_div[1:]))
-    return period, count

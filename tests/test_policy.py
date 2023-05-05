@@ -135,9 +135,28 @@ def test_simple_strategy_reuse_on():
         assert condition, message
 
 
-def _test_loop(raw_data, policy, now):
+def test_policy_rule_setting():
+    """ Test that a policy rule is set on a result item """
+    policy = RetentionPolicy(retain_strategy=RetainStrategy.OLDEST, reuse_in_group=False)
+    policy.add_rule(Day(), 1, Hour())
+    policy.add_rule(Week(), 1, Day())
+
+    raw_data = [
+        ('2023-05-04 01:00:00', True),
+        ('2023-05-04 01:05:00', False),
+    ]
+
+    r0, r1 = _get_results(raw_data, policy, DateTime(2023, 5, 4, 18))
+    assert r0.rule == policy.rules[0]
+    assert r1.rule is None
+
+
+def _get_results(raw_data, policy, now):
     data = [(DateTime.strptime(t, "%Y-%m-%d %H:%M:%S"), v) for t, v in raw_data]
-    result = policy.check_retention(data, key=lambda x: x[0], now=now)
-    for v in result:
+    return policy.check_retention(data, key=lambda x: x[0], now=now)
+
+
+def _test_loop(raw_data, policy, now):
+    for v in _get_results(raw_data, policy, now):
         yield v.item[1] == v.retain, f"Item ({v.time.strftime('%Y-%m-%d %H:%M:%S')}) should be " \
                                      f"{v.item[1]} but was {v.retain}"

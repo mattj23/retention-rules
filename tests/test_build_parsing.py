@@ -3,7 +3,7 @@
 """
 from typing import Tuple
 
-from retention_rules.builder import build_policy, parse_period_text
+from retention_rules.builder import PolicyBuilder
 from retention_rules.periods import Period, Year, Month, Week, Day, Hour, Minute, SubdividedPeriod
 
 
@@ -41,6 +41,11 @@ def test_parse_with_count_and_sub_div():
     assert parse_period_text("3D/2") == _Check(SubdividedPeriod(Day(), 2), 3)
     assert parse_period_text("3H/2") == _Check(SubdividedPeriod(Hour(), 2), 3)
     assert parse_period_text("3MIN/2") == _Check(SubdividedPeriod(Minute(), 2), 3)
+
+
+def parse_period_text(text: str):
+    b = PolicyBuilder()
+    return b._parse_key_text(text)
 
 
 class _Check:

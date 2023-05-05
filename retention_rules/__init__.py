@@ -1,2 +1,2 @@
 from .policy import RetentionPolicy
-from .builder import build_policy
+from .builder import PolicyBuilder
