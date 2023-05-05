@@ -1,6 +1,6 @@
 from datetime import datetime as DateTime
 from retention_rules.periods import Minute, Hour, Day, Week, Month, Year, SubdividedPeriod
-from retention_rules.policy import RetentionPolicy
+from retention_rules.policy import RetentionPolicy, RetainStrategy
 
 
 def test_simple_policy():
@@ -31,10 +31,8 @@ def test_simple_policy():
         ('2020-01-01 09:30:00', False),
     ]
 
-    data = [(DateTime.strptime(t, "%Y-%m-%d %H:%M:%S"), v) for t, v in raw_data]
-    mask = policy.check_retention(data, key=lambda x: x[0], now=DateTime(2020, 1, 1, 10, 0, 0))
-    for i, (t, v) in enumerate(data):
-        assert mask[i] == v, f"Mask at index {i} should be {v} but was {mask[i]}"
+    for condition, message in _test_loop(raw_data, policy, DateTime(2020, 1, 1, 10, 0, 0)):
+        assert condition, message
 
 
 def test_simple_applies_for_count():
@@ -70,7 +68,38 @@ def test_simple_applies_for_count():
         ('2020-01-01 03:10:00', False),
     ]
 
+    for condition, message in _test_loop(raw_data, policy, DateTime(2020, 1, 1, 3, 20, 0)):
+        assert condition, message
+
+
+def test_simple_strategy_newest():
+    """ This test is similar to the previous one, but the strategy is newest.  This means that the newest timestamp
+    in each retain period will be kept. """
+    policy = RetentionPolicy(retain_strategy=RetainStrategy.NEWEST)
+    policy.add_rule(Hour(), 2, SubdividedPeriod(Hour(), 4))
+
+    raw_data = [
+        ('2020-01-01 01:20:00', False),
+        ('2020-01-01 01:30:00', False),
+        ('2020-01-01 01:40:00', False),
+        ('2020-01-01 01:50:00', False),
+        ('2020-01-01 02:00:00', False),
+        ('2020-01-01 02:10:00', True),
+        ('2020-01-01 02:20:00', True),
+        ('2020-01-01 02:30:00', False),
+        ('2020-01-01 02:40:00', True),
+        ('2020-01-01 02:50:00', True),
+        ('2020-01-01 03:00:00', False),
+        ('2020-01-01 03:10:00', True),
+    ]
+
+    for condition, message in _test_loop(raw_data, policy, DateTime(2020, 1, 1, 3, 20, 0)):
+        assert condition, message
+
+
+def _test_loop(raw_data, policy, now):
     data = [(DateTime.strptime(t, "%Y-%m-%d %H:%M:%S"), v) for t, v in raw_data]
-    mask = policy.check_retention(data, key=lambda x: x[0], now=DateTime(2020, 1, 1, 3, 20, 0))
-    for i, (t, v) in enumerate(data):
-        assert mask[i] == v, f"Mask at index {i} ({raw_data[i][0]}) should be {v} but was {mask[i]}"
+    result = policy.check_retention(data, key=lambda x: x[0], now=now)
+    for v in result:
+        yield v.item[1] == v.retain, f"Item ({v.time.strftime('%Y-%m-%d %H:%M:%S')}) should be " \
+                                     f"{v.item[1]} but was {v.retain}"

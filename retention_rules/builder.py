@@ -11,7 +11,9 @@
             {"applies_for": "6M", "retain_every": "W/2"},
             {"applies_for": "Y", "retain_every": "W"},
             {"applies_for": "10Y", "retain_every": "M"},
-        ]
+        ],
+        "retain": "oldest",
+        "reuse": True
     }
 
 """

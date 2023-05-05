@@ -1,7 +1,13 @@
 from dataclasses import dataclass
+from enum import Enum
 from .periods import Period
 from datetime import datetime as DateTime
 from typing import List, Optional, Any, Callable
+
+
+class RetainStrategy(Enum):
+    OLDEST = "oldest"
+    NEWEST = "newest"
 
 
 @dataclass
@@ -18,49 +24,106 @@ class _Result:
     time: DateTime
 
 
+@dataclass
+class RetentionResult:
+    time: DateTime
+    retain: bool
+    item: Any
+    rule: Optional[PolicyRule]
+
+
 class RetentionPolicy:
-    def __init__(self, layers: Optional[List[PolicyRule]] = None):
-        self._layers = layers or []
+    def __init__(self, **kwargs):
+        """
+        :param rules: A list of PolicyRule objects
+
+        :param retain_strategy: The strategy to use to decide which items to retain. When a retain-every period has more
+            than one item in it (for example, in a retain-every hour rule there may be multiple items from a single
+            hour, and we only want to retain one of the) this determines which gets kept.
+
+        :param reuse_in_group: If a retain-every period already has an item marked to be retained from a previous rule,
+            should we re-use that item for the current rule? If True, we will skip the retain_strategy logic and move
+            on, since we already know that at least one item in this period will be retained.  If False, we will use
+            the retain_strategy to determine which gets kept, which may or may not end up being the same as the item
+            already marked to keep.
+        """
+        self._rules: List[PolicyRule] = kwargs.get("rules", [])
+        self._retain_strategy: RetainStrategy = kwargs.get("retain_strategy", RetainStrategy.OLDEST)
+        self._reuse_in_group: bool = kwargs.get("reuse_in_group", False)
         self._update()
 
     def _update(self):
-        self._layers.sort(key=lambda l: l.applies_for.max_duration() * l.applies_period_count)
+        self._rules.sort(key=lambda l: l.applies_for.max_duration() * l.applies_period_count)
 
     def add_rule(self, applies_for: Period, applies_period_count: int, retain_every: Period):
-        self._layers.append(PolicyRule(applies_for, applies_period_count, retain_every))
+        self._rules.append(PolicyRule(applies_for, applies_period_count, retain_every))
         self._update()
 
     def check_retention(self, items: List[Any],
                         key: Optional[Callable[[Any], DateTime]] = None,
-                        now: Optional[DateTime] = None) -> List[bool]:
+                        now: Optional[DateTime] = None) -> List[RetentionResult]:
         """ Checks if the given time_stamps are to be retained according to the policy. """
         now = now or DateTime.now()
-
-        # Construct the results
-        key = key or (lambda x: x)
-        results = [_Result(index, False, key(item) if key else now) for index, item in enumerate(items)]
+        results = _prepare_working(items, key)
 
         # We will iterate through each layer and mutate the results as we go. Layers will be able to mark a result as
         # to be retained, but will not un-mark something which has already been marked.
-        for layer in self._layers:
-            # Get the integer of the current layer's applies-to period
-            now_period = layer.applies_for.to_period(now)
+        for rule in self._rules:
+            # Get the integer of the current rule's applies-to period, then calculate the smallest period integer which
+            # the current rule will apply to.
+            this_period = rule.applies_for.to_period(now)
+            applies_period = this_period - rule.applies_period_count + 1
 
-            # Find the items which are in the same applies-to period as the current time
-            period_items = [item for item in results if
-                            layer.applies_for.to_period(item.time) >= now_period - layer.applies_period_count + 1]
+            # Find the items which are within the same applies-to period range as the current time
+            applicable_items = [x for x in results if rule.applies_for.to_period(x.time) >= applies_period]
 
-            # Now we will group the items by the retain-every period
-            groups = {}
-            for item in period_items:
-                retain_period = layer.retain_every.to_period(item.time)
-                if retain_period not in groups:
-                    groups[retain_period] = []
-                groups[retain_period].append(item)
+            # Now we will group the applicable items by the retain-every period that they fall in
+            grouped = _group_items_by_period(applicable_items, rule.retain_every)
 
-            # Now we will iterate through the groups and mark the first item in each group as to be retained
-            for group in groups.values():
-                min(group, key=lambda x: x.time).retain = True
+            # Now we will iterate through the groups and determine which item should be retained
+            for item_group in grouped:
+                if self._reuse_in_group and any(x.retain for x in item_group):
+                    # If we are re-using items in a group, we will first check if any of the items are already marked
+                    # to be retained. If so, we can safely skip doing anything to this group
+                    continue
+
+                if self._retain_strategy == RetainStrategy.OLDEST:
+                    # If we are retaining the oldest (first) item, we will mark the minimum time-stamp item
+                    to_retain = min(item_group, key=lambda x: x.time)
+                    to_retain.retain = True
+                    to_retain.rule = rule
+
+                elif self._retain_strategy == RetainStrategy.NEWEST:
+                    # If we are retaining the newest (last) item, we will mark the maximum time-stamp item
+                    to_retain = max(item_group, key=lambda x: x.time)
+                    to_retain.retain = True
+                    to_retain.rule = rule
 
         # Finally, we will return the results
-        return [x.retain for x in results]
+        return results
+
+
+def _group_items_by_period(items: List[RetentionResult], period: Period) -> List[List[RetentionResult]]:
+    """ Groups the given items by the given period. """
+    grouped_items = {}
+    for item in items:
+        i = period.to_period(item.time)
+        if i not in grouped_items:
+            grouped_items[i] = []
+        grouped_items[i].append(item)
+    return list(grouped_items.values())
+
+
+def _prepare_working(items: List[Any], key: Optional[Callable[[Any], DateTime]] = None) -> List[RetentionResult]:
+    """ Prepares the given items for processing by the policy. """
+    key = key or (lambda x: x)
+
+    # Validate that we are getting datetime objects
+    time_stamps = []
+    for item in items:
+        time_stamp = key(item)
+        if not isinstance(time_stamp, DateTime):
+            raise TypeError(f"Could not get a datetime from the {item} item, instead got: {type(time_stamp)}")
+        time_stamps.append(time_stamp)
+
+    return [RetentionResult(time_stamp, False, item, None) for time_stamp, item in zip(time_stamps, items)]
